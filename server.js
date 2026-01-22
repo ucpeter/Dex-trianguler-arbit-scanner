@@ -882,7 +882,7 @@ app.post('/analyze-path', async (req, res) => {
 });
 
 // ====================== SERVER START ======================
-const PORT = process.env.PORT || 3000;
+
 // Serve static files from 'public' directory (ADD THIS)
 app.use(express.static(path.join(__dirname, 'public')));
 
