@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { ethers } = require('ethers');
+const path = require('path');  // Add this line
 
 const app = express();
 app.use(cors());
@@ -882,6 +883,19 @@ app.post('/analyze-path', async (req, res) => {
 
 // ====================== SERVER START ======================
 const PORT = process.env.PORT || 3000;
+// Serve static files from 'public' directory (ADD THIS)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Send index.html for all other routes (ADD THIS)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Your existing app.listen() line stays here
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 app.listen(PORT, () => {
   console.log(`=========================================`);
   console.log(`Uniswap V3 Arbitrage Scanner`);
