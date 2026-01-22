@@ -1082,6 +1082,18 @@
             }
         };
 
+        // ===== NETWORK CONFIGURATION =====
+        const NETWORKS = {
+            arbitrum: {
+                name: 'Arbitrum',
+                chainId: 42161
+            },
+            polygon: {
+                name: 'Polygon',
+                chainId: 137
+            }
+        };
+
         // ===== INITIALIZATION =====
         document.addEventListener('DOMContentLoaded', function() {
             // Auto-detect backend URL (same origin since served from same server)
@@ -1365,26 +1377,36 @@
         }
 
         function updateBackendInfo() {
-            if (!state.backendHealth) return;
-            
-            const networkData = state.backendHealth.networks?.[state.network];
-            
-            if (networkData) {
-                elements.backendStatusText.textContent = 'Connected';
-                elements.backendVersion.textContent = state.backendHealth.version || '2.0.0';
-                elements.backendNetwork.textContent = networkData.name || 'Unknown';
-                elements.backendTokens.textContent = networkData.tokens || '55+';
-                elements.backendBlock.textContent = networkData.block?.toLocaleString() || '--';
-                
-                // Update header status
-                const statusDot = elements.backendStatus.querySelector('.status-dot');
-                const statusText = elements.backendStatus.querySelector('.status-text');
-                const blockInfo = elements.backendStatus.querySelector('.block-info');
-                
-                statusText.textContent = 'Backend Connected';
-                blockInfo.textContent = `Block: ${networkData.block?.toLocaleString() || '--'}`;
-            }
-        }
+    if (!state.backendHealth) {
+        console.log('No backend health data available');
+        return;
+    }
+    
+    console.log('Updating backend info with:', state.backendHealth);
+    const networkData = state.backendHealth.networks?.[state.network];
+    
+    if (networkData) {
+        // FIXED: Using correct property names from backend
+        elements.backendStatusText.textContent = 'Connected';
+        elements.backendVersion.textContent = state.backendHealth.version || '2.0.0';
+        elements.backendNetwork.textContent = NETWORKS[state.network]?.name || state.network.toUpperCase();
+        elements.backendTokens.textContent = networkData.tokens || '55+';
+        elements.backendBlock.textContent = networkData.block?.toLocaleString() || '--';
+        
+        // Update header status - FIXED property access
+        const statusDot = elements.backendStatus.querySelector('.status-dot');
+        const statusText = elements.backendStatus.querySelector('.status-text');
+        const blockInfo = elements.backendStatus.querySelector('.block-info');
+        
+        statusText.textContent = 'Backend Connected';
+        statusDot.style.backgroundColor = '#22c55e';
+        blockInfo.textContent = `Block: ${networkData.block?.toLocaleString() || '--'}`;
+        
+        console.log('Backend info updated successfully');
+    } else {
+        console.log('No network data found for:', state.network);
+      }
+    }
 
         function updateTimestamp() {
             const now = new Date();
