@@ -893,9 +893,8 @@ app.get('*', (req, res) => {
 
 // Your existing app.listen() line stays here
 const PORT = process.env.PORT || 3000;
-  console.log(`Server running on port ${PORT}`);
-});
 app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
   console.log(`=========================================`);
   console.log(`Uniswap V3 Arbitrage Scanner`);
   console.log(`Version 2.0 - With Token Optimization`);
