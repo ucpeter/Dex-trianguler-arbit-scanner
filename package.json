@@ -1,61 +1,23 @@
 {
-  "package.json": {
-    "name": "uniswap-v3-arbitrage-scanner",
-    "version": "1.0.0",
-    "description": "Real-time triangular arbitrage scanner for Uniswap V3",
-    "main": "server.js",
-    "scripts": {
-      "start": "node server.js",
-      "dev": "nodemon server.js"
-    },
-    "dependencies": {
-      "express": "^4.18.2",
-      "cors": "^2.8.5",
-      "ethers": "^6.9.0",
-      "socket.io": "^4.6.0",
-      "dotenv": "^16.3.1"
-    },
-    "devDependencies": {
-      "nodemon": "^3.0.2"
-    },
-    "engines": {
-      "node": ">=18.0.0"
-    }
+  "name": "uniswap-v3-arbitrage-scanner",
+  "version": "1.0.0",
+  "description": "dex triangular arbitrage scanner for Uniswap V3",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
-
-  ".env.example": {
-    "PORT": "3000",
-    "ARBITRUM_RPC": "https://arb1.arbitrum.io/rpc",
-    "POLYGON_RPC": "https://polygon-rpc.com",
-    "ALCHEMY_API_KEY": "your_alchemy_key_here",
-    "INFURA_API_KEY": "your_infura_key_here"
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ethers": "^6.9.0",
+    "socket.io": "^4.6.0",
+    "dotenv": "^16.3.1"
   },
-
-  "render.yaml": {
-    "services": [
-      {
-        "type": "web",
-        "name": "arbitrage-scanner",
-        "env": "node",
-        "buildCommand": "npm install",
-        "startCommand": "npm start",
-        "envVars": [
-          {
-            "key": "NODE_ENV",
-            "value": "production"
-          },
-          {
-            "key": "ARBITRUM_RPC",
-            "sync": false
-          },
-          {
-            "key": "POLYGON_RPC",
-            "sync": false
-          }
-        ]
-      }
-    ]
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   },
-
-  "README.md": "# Uniswap V3 Triangular Arbitrage Scanner\n\n## Setup\n\n1. Install dependencies:\n```bash\nnpm install\n```\n\n2. Create .env file:\n```bash\ncp .env.example .env\n```\n\n3. Add your RPC URLs (recommended: Alchemy or Infura)\n\n4. Run locally:\n```bash\nnpm start\n```\n\n## Deploy to Render\n\n1. Push code to GitHub\n2. Connect repository to Render\n3. Add environment variables in Render dashboard:\n   - ARBITRUM_RPC\n   - POLYGON_RPC\n4. Deploy\n\n## API Endpoints\n\n### POST /scan\nScan for arbitrage opportunities\n\n```json\n{\n  \"network\": \"arbitrum\",\n  \"amount\": 1000,\n  \"minProfit\": 0.5,\n  \"maxPaths\": 20\n}\n```\n\n### GET /health\nHealth check endpoint\n\n## WebSocket\n\nConnect to real-time updates:\n```javascript\nconst socket = io('https://your-app.onrender.com');\nsocket.emit('startScan', {\n  network: 'arbitrum',\n  amount: 1000,\n  minProfit: 0.5\n});\n\nsocket.on('opportunity', (data) => {\n  console.log('New opportunity:', data);\n});\n```\n\n## Notes\n\n- Uses Uniswap V3 Quoter contract for real on-chain quotes\n- Checks multiple fee tiers (0.05%, 0.3%, 1%)\n- Accounts for token decimals\n- Returns top 10 most profitable opportunities\n- Consider gas costs before executing trades\n"
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
