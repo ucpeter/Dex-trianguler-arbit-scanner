@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uniswap V3 Arbitrage Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ===== ROOT VARIABLES & RESET ===== */
+        :root {
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-400: #94a3b8;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --purple-900: #4c1d95;
+            --purple-600: #7c3aed;
+            --purple-400: #a78bfa;
+            --blue-600: #2563eb;
+            --blue-500: #3b82f6;
+            --blue-400: #60a5fa;
+            --green-500: #10b981;
+            --green-400: #34d399;
+            --yellow-500: #f59e0b;
+            --yellow-400: #fbbf24;
+            --red-500: #ef4444;
+            --red-400: #f87171;
+            --orange-500: #f97316;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, var(--slate-900) 0%, var(--purple-900) 50%, var(--slate-900) 100%);
+            color: white;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* ===== LAYOUT & CONTAINERS ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, var(--blue-500), var(--purple-600));
+            padding: 0.75rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--blue-400), var(--purple-400));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.2;
+        }
+
+        .logo-text p {
+            color: var(--slate-400);
+            font-size: 0.9rem;
+        }
+
+        .backend-status {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            min-width: 180px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-text {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .block-info {
+            font-size: 0.8rem;
+            color: var(--slate-400);
+        }
+
+        /* ===== STATUS BAR ===== */
+        .status-bar {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .status-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .scan-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 500;
+        }
+
+        .scan-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--slate-500);
+        }
+
+        .scan-dot.active {
+            background-color: #22c55e;
+            animation: pulse 1s infinite;
+        }
+
+        .strategy-indicator {
+            font-size: 0.9rem;
+        }
+
+        .strategy-name {
+            font-weight: 600;
+            color: var(--blue-400);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--slate-700);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--blue-500), var(--purple-600));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid var(--red-500);
+            padding: 0.75rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        /* ===== CONTROLS PANEL ===== */
+        .controls-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--slate-800);
+            border: 1px solid var(--slate-600);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--blue-500);
+        }
+
+        select:disabled, input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .scan-button {
+            grid-column: 1 / -1;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--blue-600), var(--purple-600));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .scan-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .scan-button.stop {
+            background: linear-gradient(135deg, var(--red-500), var(--orange-500));
+        }
+
+        .strategy-info {
+            background: rgba(51, 65, 85, 0.3);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .recommended-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* ===== STATS DASHBOARD ===== */
+        .stats-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-icon.blue { background: rgba(59, 130, 246, 0.2); }
+        .stat-icon.green { background: rgba(34, 197, 94, 0.2); }
+        .stat-icon.yellow { background: rgba(245, 158, 11, 0.2); }
+        .stat-icon.purple { background: rgba(168, 85, 247, 0.2); }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: var(--slate-400);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-value.green { color: #22c55e; }
+        .stat-value.yellow { color: #f59e0b; }
+
+        .stat-subtitle {
+            font-size: 0.8rem;
+            color: var(--slate-500);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== OPPORTUNITIES TABLE ===== */
+        .opportunities-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .opportunities-count {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--blue-400);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .opportunities-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .opportunities-table thead {
+            background: rgba(51, 65, 85, 0.5);
+        }
+
+        .opportunities-table th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--slate-400);
+            border-bottom: 1px solid var(--slate-700);
+        }
+
+        .opportunities-table tbody tr {
+            border-bottom: 1px solid var(--slate-700);
+            transition: background-color 0.2s;
+        }
+
+        .opportunities-table tbody tr:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .opportunities-table td {
+            padding: 1.25rem 1.5rem;
+        }
+
+        .path-cell {
+            min-width: 250px;
+        }
+
+        .path-main {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .path-details {
+            font-size: 0.85rem;
+            color: var(--slate-500);
+        }
+
+        .profit-cell {
+            min-width: 150px;
+        }
+
+        .profit-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #22c55e;
+            margin-bottom: 0.25rem;
+        }
+
+        .profit-breakdown {
+            font-size: 0.85rem;
+            color: var(--slate-500);
+        }
+
+        .confidence-cell {
+            min-width: 120px;
+        }
+
+        .confidence-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .confidence-high {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+
+        .confidence-medium {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+
+        .confidence-low {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .impact-cell {
+            min-width: 120px;
+        }
+
+        .impact-value {
+            font-weight: 600;
+        }
+
+        .impact-low { color: #22c55e; }
+        .impact-medium { color: #f59e0b; }
+        .impact-high { color: #ef4444; }
+
+        .actions-cell {
+            min-width: 140px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-button {
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            transition: all 0.2s;
+            border: none;
+            text-decoration: none;
+        }
+
+        .action-button.primary {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--blue-400);
+        }
+
+        .action-button.primary:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .action-button.secondary {
+            background: rgba(100, 116, 139, 0.2);
+            color: var(--slate-300);
+        }
+
+        .action-button.secondary:hover {
+            background: rgba(100, 116, 139, 0.3);
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .empty-icon {
+            width: 64px;
+            height: 64px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--slate-300);
+        }
+
+        .empty-state p {
+            color: var(--slate-500);
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--blue-600), var(--purple-600));
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* ===== INFO PANELS ===== */
+        .info-panels {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--slate-700);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .info-panel h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .info-panel ul {
+            list-style: none;
+        }
+
+        .info-panel li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--slate-400);
+        }
+
+        .info-number {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--blue-400);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        /* ===== FOOTER NOTE ===== */
+        .footer-note {
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.2), rgba(124, 58, 237, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-note h4 {
+            color: var(--blue-200);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .footer-note p {
+            color: var(--blue-300);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* ===== RESPONSIVE DESIGN ===== */
+        @media (max-width: 768px) {
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .opportunities-table {
+                display: block;
+            }
+            
+            .opportunities-table thead {
+                display: none;
+            }
+            
+            .opportunities-table tbody tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid var(--slate-700);
+                border-radius: 8px;
+            }
+            
+            .opportunities-table td {
+                display: block;
+                text-align: right;
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--slate-700);
+            }
+            
+            .opportunities-table td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: var(--slate-400);
+            }
+            
+            .opportunities-table td:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+         <!-- HEADER -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-bolt fa-xl" style="color: white;"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Uniswap V3 Arbitrage Scanner</h1>
+                    <p>Gas-aware triangular arbitrage detection</p>
+                </div>
+            </div>
+            <div class="backend-status" id="backendStatus">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span class="status-text">Checking Backend...</span>
+                </div>
+                <div class="block-info">Block: --</div>
+            </div>
+        </header>
+
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+            <div class="status-content">
+                <div class="status-left">
+                    <div class="scan-status">
+                        <div class="scan-dot" id="statusDot"></div>
+                        <span id="statusMessage">Ready to scan</span>
+                    </div>
+                    <div class="strategy-indicator">
+                        Strategy: <span class="strategy-name" id="currentStrategy">DeFi</span>
+                    </div>
+                </div>
+                <div class="timestamp" id="timestamp">
+                    Updated: --:--
+                </div>
+            </div>
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="error-message" id="errorMessage">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorText"></span>
+            </div>
+        </div>
+
+        <!-- CONTROLS PANEL -->
+        <div class="controls-panel">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="networkSelect">
+                        <i class="fas fa-network-wired"></i>
+                        Network
+                    </label>
+                    <select id="networkSelect">
+                        <option value="arbitrum">🔷 Arbitrum</option>
+                        <option value="polygon">🟣 Polygon</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="strategySelect">
+                        <i class="fas fa-filter"></i>
+                        Strategy
+                    </label>
+                    <select id="strategySelect">
+                        <option value="stable">🛡️ Stable</option>
+                        <option value="defi" selected>📈 DeFi</option>
+                        <option value="aggressive">⚡ Aggressive</option>
+                        <option value="test">🧪 Test</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="amountInput">
+                        <i class="fas fa-dollar-sign"></i>
+                        Amount (USD)
+                    </label>
+                    <input type="number" id="amountInput" value="1000" min="100" step="100">
+                </div>
+                
+                <div class="control-group">
+                    <label for="profitInput">
+                        <i class="fas fa-chart-line"></i>
+                        Min Net Profit (%)
+                    </label>
+                    <input type="number" id="profitInput" value="0.3" min="0.1" step="0.1">
+                </div>
+                
+                <button class="scan-button" id="scanButton">
+                    <i class="fas fa-play"></i>
+                    Start Scanning
+                </button>
+            </div>
+            
+            <div class="strategy-info" id="strategyInfo">
+                <i class="fas fa-info-circle"></i>
+                <span>Current strategy: <strong>DeFi</strong> - Stables + major DeFi tokens</span>
+                <span class="recommended-badge">Recommended</span>
+            </div>
+        </div>
+
+        <!-- STATS DASHBOARD -->
+        <div class="stats-dashboard">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-chart-bar fa-lg" style="color: #3b82f6;"></i>
+                    </div>
+                    <div>
+                        <div class="stat-title">Paths Scanned</div>
+                        <div class="stat-value" id="pathsScanned">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon green">
+                        <i class="fas fa-chart-line fa-lg" style="color: #22c55e;"></i>
+                    </div>
+                    <div>
+                        <div class="stat-title">Profitable Found</div>
+                        <div class="stat-value green" id="profitableFound">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon yellow">
+                        <i class="fas fa-chart-pie fa-lg" style="color: #f59e0b;"></i>
+                    </div>
+                    <div>
+                        <div class="stat-title">Best Net Profit</div>
+                        <div class="stat-value yellow" id="bestNetProfit">0%</div>
+                        <div class="stat-subtitle" id="bestGrossProfit">Gross: 0%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon purple">
+                        <i class="fas fa-shield-alt fa-lg" style="color: #a855f7;"></i>
+                    </div>
+                    <div>
+                        <div class="stat-title">Avg. Confidence</div>
+                        <div class="stat-value" id="avgConfidence">0%</div>
+                        <div class="stat-subtitle" id="estimatedGas">Gas: $0.00</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPPORTUNITIES TABLE -->
+        <div class="opportunities-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                    Live Arbitrage Opportunities
+                    <span class="opportunities-count" id="opportunitiesCount">0 found</span>
+                </div>
+                <div class="timestamp" id="tableTimestamp">
+                    Updated: --:--
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="opportunities-table" id="opportunitiesTable">
+                    <thead>
+                        <tr>
+                            <th>Path & Details</th>
+                            <th>Profit Analysis</th>
+                            <th>Confidence</th>
+                            <th>Gas & Impact</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="opportunitiesBody">
+                        <!-- Opportunities will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- EMPTY STATE (shown when no opportunities) -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <i class="fas fa-chart-bar fa-2x" style="color: #475569;"></i>
+                </div>
+                <h3 id="emptyTitle">No opportunities found yet</h3>
+                <p id="emptyDescription">Click "Start Scanning" to begin searching for arbitrage opportunities</p>
+                <button class="empty-button" id="emptyButton">
+                    <i class="fas fa-play"></i>
+                    Start Your First Scan
+                </button>
+            </div>
+        </div>
+
+        <!-- INFO PANELS -->
+        <div class="info-panels">
+            <div class="info-panel">
+                <h3>
+                    <i class="fas fa-bolt" style="color: #3b82f6;"></i>
+                    How This Scanner Works
+                </h3>
+                <ul>
+                    <li>
+                        <div class="info-number">1</div>
+                        <span><strong>Gas-Aware Calculation:</strong> All profits shown are NET profits after gas costs</span>
+                    </li>
+                    <li>
+                        <div class="info-number">2</div>
+                        <span><strong>Pool Validation:</strong> Only checks existing Uniswap V3 pools with sufficient liquidity</span>
+                    </li>
+                    <li>
+                        <div class="info-number">3</div>
+                        <span><strong>Price Impact Filtering:</strong> Filters out trades with >1.5% price impact</span>
+                    </li>
+                    <li>
+                        <div class="info-number">4</div>
+                        <span><strong>Confidence Scoring:</strong> Rates opportunities based on multiple risk factors</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="info-panel">
+                <h3>
+                    <i class="fas fa-server" style="color: #22c55e;"></i>
+                    Backend Information
+                </h3>
+                <ul id="backendInfoList">
+                    <li>
+                        <div class="info-number">1</div>
+                        <span><strong>Status:</strong> <span id="backendStatusText">Checking...</span></span>
+                    </li>
+                    <li>
+                        <div class="info-number">2</div>
+                        <span><strong>Scanner Version:</strong> <span id="backendVersion">2.0.0</span></span>
+                    </li>
+                    <li>
+                        <div class="info-number">3</div>
+                        <span><strong>Current Network:</strong> <span id="backendNetwork">Arbitrum</span></span>
+                    </li>
+                    <li>
+                        <div class="info-number">4</div>
+                        <span><strong>Tokens Available:</strong> <span id="backendTokens">55+</span></span>
+                    </li>
+                    <li>
+                        <div class="info-number">5</div>
+                        <span><strong>Last Block:</strong> <span id="backendBlock">--</span></span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- FOOTER NOTE -->
+        <div class="footer-note">
+            <h4>
+                <i class="fas fa-exclamation-circle"></i>
+                Important Notice
+            </h4>
+            <p>
+                This scanner finds NET profits after accounting for gas costs. All opportunities are calculated 
+                using real-time Uniswap V3 liquidity data. Execution speed, slippage, and market conditions 
+                can affect actual results. Always verify with current gas prices before executing.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ===== APPLICATION STATE =====
+        let state = {
+            network: 'arbitrum',
+            strategy: 'defi',
+            amount: 1000,
+            minProfit: 0.3,
+            isScanning: false,
+            opportunities: [],
+            stats: {
+                scanned: 0,
+                profitable: 0,
+                bestNetProfit: 0,
+                bestGrossProfit: 0,
+                estimatedGasCost: 0,
+                avgConfidence: 0
+            },
+            backendHealth: null,
+            scanInterval: null,
+            backendUrl: '' // Will be set automatically
+        };
+
+        // ===== DOM ELEMENTS =====
+        const elements = {
+            // Status
+            statusDot: document.getElementById('statusDot'),
+            statusMessage: document.getElementById('statusMessage'),
+            progressBar: document.getElementById('progressBar'),
+            progressFill: document.getElementById('progressFill'),
+            errorMessage: document.getElementById('errorMessage'),
+            errorText: document.getElementById('errorText'),
+            
+            // Controls
+            networkSelect: document.getElementById('networkSelect'),
+            strategySelect: document.getElementById('strategySelect'),
+            amountInput: document.getElementById('amountInput'),
+            profitInput: document.getElementById('profitInput'),
+            scanButton: document.getElementById('scanButton'),
+            currentStrategy: document.getElementById('currentStrategy'),
+            strategyInfo: document.getElementById('strategyInfo'),
+            
+            // Stats
+            pathsScanned: document.getElementById('pathsScanned'),
+            profitableFound: document.getElementById('profitableFound'),
+            bestNetProfit: document.getElementById('bestNetProfit'),
+            bestGrossProfit: document.getElementById('bestGrossProfit'),
+            avgConfidence: document.getElementById('avgConfidence'),
+            estimatedGas: document.getElementById('estimatedGas'),
+            
+            // Opportunities
+            opportunitiesCount: document.getElementById('opportunitiesCount'),
+            opportunitiesBody: document.getElementById('opportunitiesBody'),
+            opportunitiesTable: document.getElementById('opportunitiesTable'),
+            emptyState: document.getElementById('emptyState'),
+            emptyTitle: document.getElementById('emptyTitle'),
+            emptyDescription: document.getElementById('emptyDescription'),
+            emptyButton: document.getElementById('emptyButton'),
+            refreshIcon: document.getElementById('refreshIcon'),
+            
+            // Backend info
+            backendStatus: document.getElementById('backendStatus'),
+            backendStatusText: document.getElementById('backendStatusText'),
+            backendVersion: document.getElementById('backendVersion'),
+            backendNetwork: document.getElementById('backendNetwork'),
+            backendTokens: document.getElementById('backendTokens'),
+            backendBlock: document.getElementById('backendBlock'),
+            
+            // Timestamps
+            timestamp: document.getElementById('timestamp'),
+            tableTimestamp: document.getElementById('tableTimestamp')
+        };
+
+        // ===== STRATEGY CONFIGURATION =====
+        const strategies = {
+            stable: {
+                name: 'Stable',
+                description: 'Stablecoin triangles only',
+                recommended: true
+            },
+            defi: {
+                name: 'DeFi',
+                description: 'Stables + major DeFi tokens',
+                recommended: true
+            },
+            aggressive: {
+                name: 'Aggressive',
+                description: 'Includes mid-cap tokens',
+                recommended: false
+            },
+            test: {
+                name: 'Test',
+                description: 'Quick scan with top tokens',
+                recommended: false
+            }
+        };
+
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-detect backend URL (same origin since served from same server)
+            state.backendUrl = window.location.origin;
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initial backend health check
+            checkBackendHealth();
+            
+            // Initial UI update
+            updateUI();
+            
+            // Update timestamp
+            updateTimestamp();
+        });
+
+        // ===== EVENT LISTENERS =====
+        function setupEventListeners() {
+            // Control changes
+            elements.networkSelect.addEventListener('change', function() {
+                state.network = this.value;
+                updateStrategyInfo();
+                updateUI();
+            });
+            
+            elements.strategySelect.addEventListener('change', function() {
+                state.strategy = this.value;
+                updateStrategyInfo();
+                updateUI();
+            });
+            
+            elements.amountInput.addEventListener('input', function() {
+                state.amount = parseFloat(this.value) || 1000;
+            });
+            
+            elements.profitInput.addEventListener('input', function() {
+                state.minProfit = parseFloat(this.value) || 0.3;
+            });
+            
+            // Scan button
+            elements.scanButton.addEventListener('click', toggleScanning);
+            elements.emptyButton.addEventListener('click', function() {
+                if (!state.isScanning) {
+                    toggleScanning();
+                }
+            });
+        }
+
+        // ===== BACKEND COMMUNICATION =====
+        async function checkBackendHealth() {
+            try {
+                const response = await fetch(`${state.backendUrl}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    state.backendHealth = data;
+                    updateBackendInfo();
+                    showError(null);
+                } else {
+                    showError('Backend returned unhealthy status');
+                }
+            } catch (error) {
+                console.error('Backend health check failed:', error);
+                showError('Cannot connect to backend server');
+            }
+        }
+
+        async function scanForOpportunities() {
+            if (!state.backendHealth) {
+                showError('Backend not connected. Please check server status.');
+                return;
+            }
+
+            try {
+                setStatus('Scanning...', true);
+                setProgress(10);
+                
+                const response = await fetch(`${state.backendUrl}/scan`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        network: state.network,
+                        amount: state.amount,
+                        strategy: state.strategy,
+                        minNetProfit: state.minProfit,
+                        verifyPersistence: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Backend error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                setProgress(100);
+                
+                if (data.success) {
+                    // Update opportunities
+                    const newOpportunities = data.opportunities || [];
+                    state.opportunities = newOpportunities;
+                    
+                    / Update stats
+                    state.stats = {
+                        scanned: data.scan.pathsScanned,
+                        profitable: data.scan.opportunitiesFound,
+                        bestNetProfit: data.summary.bestNetProfit || 0,
+                        bestGrossProfit: data.summary.bestGrossProfit || 0,
+                        estimatedGasCost: data.summary.estimatedGasCost || 0,
+                        avgConfidence: data.summary.averageConfidence || 0
+                    };
+                    
+                    setStatus(`Found ${data.scan.opportunitiesFound} opportunities!`, false);
+                    updateUI();
+                    
+                    // Update backend health after successful scan
+                    checkBackendHealth();
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+                setStatus('Scan failed', false);
+                showError(`Scan failed: ${error.message}`);
+            }
+        }
+
+        // ===== UI UPDATES =====
+        function updateUI() {
+            // Update stats
+            elements.pathsScanned.textContent = state.stats.scanned;
+            elements.profitableFound.textContent = state.stats.profitable;
+            elements.bestNetProfit.textContent = state.stats.bestNetProfit > 0 ? 
+                `+${state.stats.bestNetProfit.toFixed(3)}%` : '0%';
+            elements.bestGrossProfit.textContent = `Gross: ${state.stats.bestGrossProfit.toFixed(3)}%`;
+            elements.avgConfidence.textContent = `${state.stats.avgConfidence}%`;
+            elements.estimatedGas.textContent = `Gas: $${state.stats.estimatedGasCost.toFixed(2)}`;
+            
+            // Update opportunities table
+            updateOpportunitiesTable();
+            
+            // Update scan button
+            updateScanButton();
+            
+            // Update empty state
+            updateEmptyState();
+            
+            // Update timestamp
+            updateTimestamp();
+        }
+
+        function updateOpportunitiesTable() {
+            const tbody = elements.opportunitiesBody;
+            tbody.innerHTML = '';
+            
+            if (state.opportunities.length === 0) {
+                elements.opportunitiesCount.textContent = '0 found';
+                elements.opportunitiesTable.style.display = 'none';
+                elements.emptyState.style.display = 'block';
+                return;
+            }
+            
+            elements.opportunitiesCount.textContent = `${state.opportunities.length} found`;
+            elements.opportunitiesTable.style.display = 'table';
+            elements.emptyState.style.display = 'none';
+            
+            state.opportunities.forEach((opp, index) => {
+                const row = document.createElement('tr');
+                
+                // Confidence class
+                const confidenceClass = opp.confidence >= 80 ? 'confidence-high' : 
+                                      opp.confidence >= 60 ? 'confidence-medium' : 
+                                      'confidence-low';
+                
+                // Impact class
+                const maxImpact = Math.max(...(opp.priceImpacts || [0]));
+                const impactClass = maxImpact < 0.5 ? 'impact-low' : 
+                                  maxImpact < 1.0 ? 'impact-medium' : 
+                                  'impact-high';
+                
+                row.innerHTML = `
+                    <td class="path-cell" data-label="Path">
+                        <div class="path-main">${opp.path}</div>
+                        <div class="path-details">
+                            Input: $${opp.inputAmount.toFixed(2)} • 
+                            Fees: ${opp.feeLabels?.join(' / ') || 'N/A'}
+                        </div>
+                    </td>
+                    <td class="profit-cell" data-label="Profit">
+                        <div class="profit-value">+${opp.netProfitPercent.toFixed(3)}%</div>
+                        <div class="profit-breakdown">
+                            Gross: +${opp.grossProfitPercent.toFixed(3)}% • 
+                            Gas: $${opp.gasCostTokenA?.toFixed(2) || '0.00'}
+                        </div>
+                    </td>
+                    <td class="confidence-cell" data-label="Confidence">
+                        <div class="confidence-badge ${confidenceClass}">
+                            ${opp.confidence}%
+                        </div>
+                    </td>
+                    <td class="impact-cell" data-label="Impact">
+                        <div class="impact-value ${impactClass}">
+                            ${maxImpact.toFixed(2)}% max impact
+                        </div>
+                        <div class="path-details">
+                            ${opp.network.toUpperCase()} • 
+                            ${new Date(opp.timestamp).toLocaleTimeString([], { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            })}
+                        </div>
+                    </td>
+                    <td class="actions-cell" data-label="Actions">
+                        <div class="action-buttons">
+                            <a href="${getUniswapLink(opp)}" target="_blank" class="action-button primary">
+                                <i class="fas fa-external-link-alt"></i>
+                                Uniswap
+                            </a>
+                            <button class="action-button secondary" onclick="copyToClipboard('${opp.poolAddresses?.[0] || ''}', ${index})">
+                                <i class="fas fa-copy"></i>
+                                Pool
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateEmptyState() {
+            if (state.isScanning) {
+                elements.emptyTitle.textContent = 'Scanning blockchain for opportunities...';
+                elements.emptyDescription.textContent = 'Please wait while the scanner analyzes trading paths';
+                elements.emptyButton.style.display = 'none';
+            } else {
+                elements.emptyTitle.textContent = state.opportunities.length === 0 ? 
+                    'No opportunities found yet' : 
+                    'Scanning complete';
+                elements.emptyDescription.textContent = state.opportunities.length === 0 ?
+                    'Click "Start Scanning" to begin searching for arbitrage opportunities' :
+                    `Found ${state.opportunities.length} opportunities. Try adjusting parameters for more results.`;
+                elements.emptyButton.style.display = 'block';
+                elements.emptyButton.innerHTML = state.isScanning ? 
+                    '<i class="fas fa-pause"></i> Stop Scanning' : 
+                    '<i class="fas fa-play"></i> Start Scanning';
+            }
+        }
+
+        function updateScanButton() {
+            const button = elements.scanButton;
+            const icon = button.querySelector('i');
+            
+            if (state.isScanning) {
+                button.innerHTML = '<i class="fas fa-pause"></i> Stop Scanning';
+                button.classList.add('stop');
+                elements.refreshIcon.classList.add('refresh-icon');
+            } else {
+                button.innerHTML = '<i class="fas fa-play"></i> Start Scanning';
+                button.classList.remove('stop');
+                elements.refreshIcon.classList.remove('refresh-icon');
+            }
+        }
+
+        function updateStrategyInfo() {
+            const strategy = strategies[state.strategy];
+            elements.currentStrategy.textContent = strategy.name;
+            
+            let infoHTML = `<i class="fas fa-info-circle"></i>
+                           <span>Current strategy: <strong>${strategy.name}</strong> - ${strategy.description}</span>`;
+            
+            if (strategy.recommended) {
+                infoHTML += `<span class="recommended-badge">Recommended</span>`;
+            }
+            
+            elements.strategyInfo.innerHTML = infoHTML;
+        }
+
+        function updateBackendInfo() {
+            if (!state.backendHealth) return;
+            
+            const networkData = state.backendHealth.networks?.[state.network];
+            
+            if (networkData) {
+                elements.backendStatusText.textContent = 'Connected';
+                elements.backendVersion.textContent = state.backendHealth.version || '2.0.0';
+                elements.backendNetwork.textContent = networkData.name || 'Unknown';
+                elements.backendTokens.textContent = networkData.tokens || '55+';
+                elements.backendBlock.textContent = networkData.block?.toLocaleString() || '--';
+                
+                // Update header status
+                const statusDot = elements.backendStatus.querySelector('.status-dot');
+                const statusText = elements.backendStatus.querySelector('.status-text');
+                const blockInfo = elements.backendStatus.querySelector('.block-info');
+                
+                statusText.textContent = 'Backend Connected';
+                blockInfo.textContent = `Block: ${networkData.block?.toLocaleString() || '--'}`;
+            }
+        }
+
+        function updateTimestamp() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit' 
+            });
+            
+            elements.timestamp.textContent = `Updated: ${timeString}`;
+            elements.tableTimestamp.textContent = `Updated: ${timeString}`;
+        }
+
+        // ===== SCANNING CONTROL =====
+        function toggleScanning() {
+            if (state.isScanning) {
+                // Stop scanning
+                state.isScanning = false;
+                clearInterval(state.scanInterval);
+                setStatus('Scanning stopped', false);
+                setProgress(0);
+            } else {
+                // Start scanning
+                state.isScanning = true;
+                setStatus('Starting scan...', true);
+                setProgress(5);
+                
+                // Do initial scan
+                scanForOpportunities();
+                
+                // Set up interval for continuous scanning (every 30 seconds)
+                state.scanInterval = setInterval(() => {
+                    if (state.isScanning) {
+                        scanForOpportunities();
+                    }
+                }, 30000);
+            }
+            
+            updateUI();
+        }
+
+        // ===== HELPER FUNCTIONS =====
+        function setStatus(message, active) {
+            elements.statusMessage.textContent = message;
+            
+            if (active) {
+                elements.statusDot.classList.add('active');
+                elements.progressBar.style.display = 'block';
+            } else {
+                elements.statusDot.classList.remove('active');
+                elements.progressBar.style.display = 'none';
+            }
+        }
+
+        function setProgress(percent) {
+            elements.progressFill.style.width = `${percent}%`;
+        }
+
+        function showError(message) {
+            if (!message) {
+                elements.errorMessage.classList.remove('show');
+                return;
+            }
+            
+            elements.errorText.textContent = message;
+            elements.errorMessage.classList.add('show');
+            
+            // Auto-hide error after 10 seconds
+            setTimeout(() => {
+                elements.errorMessage.classList.remove('show');
+            }, 10000);
+        }
+
+        function getUniswapLink(opportunity) {
+            // This is a simplified version - in a real app, you'd generate
+            // actual Uniswap links based on the path and tokens
+            const network = opportunity.network;
+            const path = opportunity.pathArray || [];
+            
+            if (path.length >= 2) {
+                return `https://app.uniswap.org/swap?chain=${network}`;
+            }
+            
+            return '#';
+        }
+
+        function copyToClipboard(text, index) {
+            if (!text || text === 'undefined') return;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary feedback
+                const buttons = document.querySelectorAll('.action-button.secondary');
+                if (buttons[index]) {
+                    const originalHTML = buttons[index].innerHTML;
+                    buttons[index].innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    buttons[index].style.background = 'rgba(34, 197, 94, 0.2)';
+                    buttons[index].style.color = '#22c55e';
+                    
+                    setTimeout(() => {
+                        buttons[index].innerHTML = originalHTML;
+                        buttons[index].style.background = '';
+                        buttons[index].style.color = '';
+                    }, 2000);
+                }
+            });
+        }
+
+        // Make copyToClipboard available globally
+        window.copyToClipboard = copyToClipboard;
+    </script>
+</body>
+</html>
