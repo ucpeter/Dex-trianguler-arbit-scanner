@@ -1,1 +1,31 @@
-render.yaml
+```yaml
+services:
+  - type: web
+    name: arbitrage-scanner
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    
+    envVars:
+      - key: NODE_ENV
+        value: production
+      
+      - key: PORT
+        value: 3000
+      
+      - key: ARBITRUM_RPC
+        sync: false
+      
+      - key: POLYGON_RPC
+        sync: false
+      
+      - key: MIN_LIQUIDITY_USD
+        value: 50000
+      
+      - key: LOG_LEVEL
+        value: info
+
+    autoDeploy: true
