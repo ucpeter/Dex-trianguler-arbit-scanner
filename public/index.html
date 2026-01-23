@@ -1145,59 +1145,59 @@
         }
 
         async function checkBackendHealth() {
-         console.log('DEBUG: checkBackendHealth() STARTED');
-         console.log('DEBUG: backendUrl is:', state.backendUrl);
+          alert('DEBUG 1: checkBackendHealth() STARTED');
+          alert('DEBUG 2: backendUrl is: ' + state.backendUrl);
     
-         const healthUrl = state.backendUrl + '/health';
-         console.log('DEBUG: Full health URL is:', healthUrl);
+       const healthUrl = state.backendUrl + '/health';
+       alert('DEBUG 3: Full health URL is: ' + healthUrl);
     
-         try {
-           console.log('DEBUG: Attempting fetch to:', healthUrl);
+       try {
+            alert('DEBUG 4: Attempting fetch to: ' + healthUrl);
         
-           const response = await fetch(healthUrl, {
-             method: 'GET',
-             headers: {
+            const response = await fetch(healthUrl, {
+               method: 'GET',
+               headers: {
                 'Accept': 'application/json',
-             }
-          });
+               }
+            });
         
-          console.log('DEBUG: Fetch completed. Status:', response.status);
+           alert('DEBUG 5: Fetch completed. Status: ' + response.status);
         
-          if (!response.ok) {
-            console.error('DEBUG: HTTP Error! Status:', response.status);
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+           if (!response.ok) {
+              alert('DEBUG 6: HTTP Error! Status: ' + response.status);
+              throw new Error(`HTTP error! status: ${response.status}`);
+           }
         
-          const data = await response.json();
-          console.log('DEBUG: Got JSON response:', data);
+           const data = await response.json();
+           alert('DEBUG 7: Got JSON response. Status: ' + data.status);
         
-          if (data.status === 'healthy') {
-              console.log('DEBUG: Backend is healthy!');
+           if (data.status === 'healthy') {
+              alert('DEBUG 8: Backend is healthy! Updating UI...');
               state.backendHealth = data;
               updateBackendInfo();
               showError(null);
-          } else {
-            console.error('DEBUG: Backend unhealthy:', data);
-            throw new Error('Backend unhealthy');
-          }
+           } else {
+              alert('DEBUG 9: Backend unhealthy: ' + JSON.stringify(data));
+              throw new Error('Backend unhealthy');
+           }
         
-      } catch (error) {
-          console.error('DEBUG: CATCH BLOCK - Error name:', error.name);
-          console.error('DEBUG: CATCH BLOCK - Error message:', error.message);
+        
+        } catch (error) {
+            alert('DEBUG 10: CATCH BLOCK - Error: ' + error.message);
         
         // Force UI update to show error state
-          elements.backendStatusText.textContent = 'Error';
-          const statusDot = elements.backendStatus.querySelector('.status-dot');
-          const statusText = elements.backendStatus.querySelector('.status-text');
+            elements.backendStatusText.textContent = 'Error';
+            const statusDot = elements.backendStatus.querySelector('.status-dot');
+            const statusText = elements.backendStatus.querySelector('.status-text');
         
-          statusText.textContent = 'Connection Failed';
-          statusDot.style.backgroundColor = '#ef4444';
+            statusText.textContent = 'Connection Failed';
+            statusDot.style.backgroundColor = '#ef4444';
         
-          showError(`Connection failed: ${error.message}`);
-      }
+            showError(`Connection failed: ${error.message}`);
+        }
     
-      console.log('DEBUG: checkBackendHealth() FINISHED');
- }
+        alert('DEBUG 11: checkBackendHealth() FINISHED');
+     }
 
         async function scanForOpportunities() {
             if (!state.backendHealth) {
