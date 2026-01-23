@@ -1005,7 +1005,7 @@
             },
             backendHealth: null,
             scanInterval: null,
-            backendUrl: 'api'  
+            backendUrl: ''  
         };
 
         // ===== DOM ELEMENTS =====
@@ -1144,24 +1144,60 @@
             });
         }
 
-        // ===== BACKEND COMMUNICATION =====
         async function checkBackendHealth() {
-            try {
-                const response = await fetch(`${state.backendUrl}/health`);
-                const data = await response.json();
-                
-                if (data.status === 'healthy') {
-                    state.backendHealth = data;
-                    updateBackendInfo();
-                    showError(null);
-                } else {
-                    showError('Backend returned unhealthy status');
-                }
-            } catch (error) {
-                console.error('Backend health check failed:', error);
-                showError('Cannot connect to backend server');
-            }
-        }
+         console.log('DEBUG: checkBackendHealth() STARTED');
+         console.log('DEBUG: backendUrl is:', state.backendUrl);
+    
+         const healthUrl = state.backendUrl + '/health';
+         console.log('DEBUG: Full health URL is:', healthUrl);
+    
+         try {
+           console.log('DEBUG: Attempting fetch to:', healthUrl);
+        
+           const response = await fetch(healthUrl, {
+             method: 'GET',
+             headers: {
+                'Accept': 'application/json',
+             }
+          });
+        
+          console.log('DEBUG: Fetch completed. Status:', response.status);
+        
+          if (!response.ok) {
+            console.error('DEBUG: HTTP Error! Status:', response.status);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+        
+          const data = await response.json();
+          console.log('DEBUG: Got JSON response:', data);
+        
+          if (data.status === 'healthy') {
+              console.log('DEBUG: Backend is healthy!');
+              state.backendHealth = data;
+              updateBackendInfo();
+              showError(null);
+          } else {
+            console.error('DEBUG: Backend unhealthy:', data);
+            throw new Error('Backend unhealthy');
+          }
+        
+      } catch (error) {
+          console.error('DEBUG: CATCH BLOCK - Error name:', error.name);
+          console.error('DEBUG: CATCH BLOCK - Error message:', error.message);
+        
+        // Force UI update to show error state
+          elements.backendStatusText.textContent = 'Error';
+          const statusDot = elements.backendStatus.querySelector('.status-dot');
+          const statusText = elements.backendStatus.querySelector('.status-text');
+        
+          statusText.textContent = 'Connection Failed';
+          statusDot.style.backgroundColor = '#ef4444';
+        
+          showError(`Connection failed: ${error.message}`);
+      }
+    
+      console.log('DEBUG: checkBackendHealth() FINISHED');
+ }
 
         async function scanForOpportunities() {
             if (!state.backendHealth) {
