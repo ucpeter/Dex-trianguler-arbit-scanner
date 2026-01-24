@@ -177,28 +177,28 @@ const SCANNER_CONFIG = {
       categories: ['stable'],
       minLiquidity: 10000,
       feePriority: [500, 3000], // Prefer 0.05% and 0.3% pools
-      maxPaths: 10
+      maxPaths: 20
     },
     defi: {
       description: 'DeFi token triangles',
       categories: ['stable', 'major', 'defi'],
       minLiquidity: 1000,
       feePriority: [3000, 500, 10000],
-      maxPaths: 15
+      maxPaths: 30
     },
     aggressive: {
       description: 'All token combinations',
       categories: ['stable', 'major', 'defi', 'midcap'],
       minLiquidity: 100,
       feePriority: [3000, 10000, 500],
-      maxPaths: 20
+      maxPaths: 50
     },
     test: {
       description: 'Quick test with top tokens',
       categories: ['stable', 'major'],
       minLiquidity: 5000,
       feePriority: [3000],
-      maxPaths: 5
+      maxPaths: 15
     }
   },
   
