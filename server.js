@@ -288,75 +288,162 @@ function getTokensByCategory(network, categories) {
  * Generate optimized paths based on strategy
  */
 function generateOptimizedPaths(network, strategy = 'defi') {
-  const config = SCANNER_CONFIG.strategies[strategy] || SCANNER_CONFIG.strategies.defi;
-  const tokens = getTokensByCategory(network, config.categories);
-  const tokenSymbols = Object.keys(tokens);
-  
-  const paths = [];
-  
-  if (strategy === 'stable') {
-    // Generate all stablecoin triangles
-    const stables = tokenSymbols.filter(s => tokens[s].category === 'stable');
-    for (let i = 0; i < stables.length; i++) {
-      for (let j = 0; j < stables.length; j++) {
-        for (let k = 0; k < stables.length; k++) {
-          if (i !== j && j !== k && i !== k) {
-            paths.push([stables[i], stables[j], stables[k]]);
-          }
-        }
-      }
-    }
-  } else if (strategy === 'defi') {
-    // DeFi strategy: stable -> major/defi -> stable
-    const stables = tokenSymbols.filter(s => tokens[s].category === 'stable');
-    const defiTokens = tokenSymbols.filter(s => 
-      ['major', 'defi'].includes(tokens[s].category)
-    );
+    const config = SCANNER_CONFIG.strategies[strategy] || SCANNER_CONFIG.strategies.defi;
+    const tokens = getTokensByCategory(network, config.categories);
+    const tokenSymbols = Object.keys(tokens);
     
-    for (const stable of stables.slice(0, 3)) {
-      for (const defi1 of defiTokens.slice(0, 5)) {
-        for (const defi2 of defiTokens.slice(0, 5)) {
-          if (defi1 !== defi2 && defi1 !== stable && defi2 !== stable) {
-            paths.push([stable, defi1, defi2]);
-          }
-        }
-      }
-    }
-  } else {
-    // Aggressive strategy: mix of all categories
-    const priorityTokens = tokenSymbols.filter(s => 
-      tokens[s].category === 'stable' || tokens[s].category === 'major'
-    );
+    console.log(`DEBUG: Strategy '${strategy}' includes categories:`, config.categories);
+    console.log(`DEBUG: Available tokens:`, tokenSymbols.length);
+    console.log(`DEBUG: Token categories:`, [...new Set(Object.values(tokens).map(t => t.category))]);
     
-    for (let i = 0; i < Math.min(priorityTokens.length, 4); i++) {
-      for (let j = 0; j < Math.min(tokenSymbols.length, 6); j++) {
-        for (let k = 0; k < Math.min(tokenSymbols.length, 6); k++) {
-          const t1 = priorityTokens[i];
-          const t2 = tokenSymbols[j];
-          const t3 = tokenSymbols[k];
-          
-          if (t1 !== t2 && t2 !== t3 && t1 !== t3) {
-            paths.push([t1, t2, t3]);
-          }
+    const paths = [];
+    
+    // Get tokens by category for better mixing
+    const tokensByCategory = {};
+    for (const [symbol, data] of Object.entries(tokens)) {
+        if (!tokensByCategory[data.category]) {
+            tokensByCategory[data.category] = [];
         }
-      }
+        tokensByCategory[data.category].push(symbol);
     }
-  }
-  
-  // Remove duplicates and limit
-  const uniquePaths = [];
-  const seen = new Set();
-  
-  for (const path of paths) {
-    const key = path.sort().join('-');
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniquePaths.push(path);
+    
+    // Helper to get random element
+    const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    
+    if (strategy === 'stable') {
+        // Generate all stablecoin triangles
+        const stables = tokensByCategory['stable'] || [];
+        for (let i = 0; i < Math.min(stables.length, 4); i++) {
+            for (let j = 0; j < Math.min(stables.length, 4); j++) {
+                for (let k = 0; k < Math.min(stables.length, 4); k++) {
+                    if (i !== j && j !== k && i !== k) {
+                        paths.push([stables[i], stables[j], stables[k]]);
+                    }
+                }
+            }
+        }
+    } else if (strategy === 'defi') {
+        // DeFi strategy: stable -> major/defi -> stable
+        const stables = tokensByCategory['stable'] || [];
+        const major = tokensByCategory['major'] || [];
+        const defi = tokensByCategory['defi'] || [];
+        const majorDefi = [...major, ...defi];
+        
+        console.log(`DEBUG: Defi - Stables: ${stables.length}, Major: ${major.length}, Defi: ${defi.length}`);
+        
+        // Type 1: Stable -> Major/DeFi -> Different Stable
+        for (let i = 0; i < Math.min(stables.length, 4); i++) {
+            for (let j = 0; j < Math.min(majorDefi.length, 8); j++) {
+                for (let k = 0; k < Math.min(stables.length, 4); k++) {
+                    if (stables[i] !== stables[k]) {
+                        paths.push([stables[i], majorDefi[j], stables[k]]);
+                    }
+                }
+            }
+        }
+        
+        // Type 2: DeFi -> DeFi -> DeFi (pure DeFi triangles)
+        for (let i = 0; i < Math.min(defi.length, 5); i++) {
+            for (let j = 0; j < Math.min(defi.length, 5); j++) {
+                for (let k = 0; k < Math.min(defi.length, 5); k++) {
+                    if (i !== j && j !== k && i !== k) {
+                        paths.push([defi[i], defi[j], defi[k]]);
+                    }
+                }
+            }
+        }
+        
+        // Type 3: Major -> DeFi -> Stable
+        for (let i = 0; i < Math.min(major.length, 4); i++) {
+            for (let j = 0; j < Math.min(defi.length, 6); j++) {
+                for (let k = 0; k < Math.min(stables.length, 4); k++) {
+                    paths.push([major[i], defi[j], stables[k]]);
+                }
+            }
+        }
+    } else if (strategy === 'aggressive') {
+        // Aggressive: Mix all categories including midcap
+        const stables = tokensByCategory['stable'] || [];
+        const major = tokensByCategory['major'] || [];
+        const defi = tokensByCategory['defi'] || [];
+        const midcap = tokensByCategory['midcap'] || [];
+        
+        console.log(`DEBUG: Aggressive - Stable: ${stables.length}, Major: ${major.length}, Defi: ${defi.length}, Midcap: ${midcap.length}`);
+        
+        // Type 1: Stable -> Midcap -> DeFi
+        for (let i = 0; i < Math.min(stables.length, 3); i++) {
+            for (let j = 0; j < Math.min(midcap.length, 6); j++) {
+                for (let k = 0; k < Math.min(defi.length, 6); k++) {
+                    paths.push([stables[i], midcap[j], defi[k]]);
+                }
+            }
+        }
+        
+        // Type 2: Major -> DeFi -> Midcap
+        for (let i = 0; i < Math.min(major.length, 4); i++) {
+            for (let j = 0; j < Math.min(defi.length, 6); j++) {
+                for (let k = 0; k < Math.min(midcap.length, 6); k++) {
+                    paths.push([major[i], defi[j], midcap[k]]);
+                }
+            }
+        }
+        
+        // Type 3: Cross-category mixes
+        const allCategories = ['stable', 'major', 'defi', 'midcap'];
+        for (let mix = 0; mix < 15; mix++) {
+            const cat1 = getRandom(allCategories);
+            const cat2 = getRandom(allCategories);
+            const cat3 = getRandom(allCategories);
+            
+            const arr1 = tokensByCategory[cat1] || [];
+            const arr2 = tokensByCategory[cat2] || [];
+            const arr3 = tokensByCategory[cat3] || [];
+            
+            if (arr1.length > 0 && arr2.length > 0 && arr3.length > 0) {
+                const t1 = getRandom(arr1);
+                const t2 = getRandom(arr2);
+                const t3 = getRandom(arr3);
+                
+                if (t1 !== t2 && t2 !== t3 && t1 !== t3) {
+                    paths.push([t1, t2, t3]);
+                }
+            }
+        }
+    } else if (strategy === 'test') {
+        // Test: Simple stable -> major -> stable
+        const stables = (tokensByCategory['stable'] || []).slice(0, 3);
+        const majors = (tokensByCategory['major'] || []).slice(0, 2);
+        
+        for (const stable1 of stables) {
+            for (const major of majors) {
+                for (const stable2 of stables) {
+                    if (stable1 !== stable2) {
+                        paths.push([stable1, major, stable2]);
+                    }
+                }
+            }
+        }
     }
-    if (uniquePaths.length >= config.maxPaths) break;
-  }
-  
-  return uniquePaths;
+    
+    // Remove duplicates and limit
+    const uniquePaths = [];
+    const seen = new Set();
+    
+    for (const path of paths) {
+        const key = path.join('-');
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniquePaths.push(path);
+        }
+        if (uniquePaths.length >= config.maxPaths) break;
+    }
+    
+    console.log(`DEBUG: Generated ${uniquePaths.length} unique paths for '${strategy}' strategy`);
+    if (uniquePaths.length > 0) {
+        console.log(`DEBUG: First 3 paths:`, uniquePaths.slice(0, 3));
+    }
+    
+    return uniquePaths;
 }
 
 /**
